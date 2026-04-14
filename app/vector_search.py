@@ -42,7 +42,8 @@ def _ollama_embedding(text: str) -> list[float]:
         timeout=30.0,
     )
     resp.raise_for_status()
-    return resp.json()["embeddings"][0]
+    result: list[float] = resp.json()["embeddings"][0]
+    return result
 
 
 def embed(text: str) -> list[float]:
@@ -72,7 +73,7 @@ def insert_document(title: str, content: str) -> int:
                 },
             )
             conn.commit()
-            return doc_id_var.getvalue()[0]
+            return int(doc_id_var.getvalue()[0])
 
 
 def search_similar(query: str, top_k: int = 5) -> list[dict[str, Any]]:

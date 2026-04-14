@@ -30,6 +30,8 @@ jobs:
 
       - name: Run mock-only tests
         run: |
-          pytest tests/test_vector_search.py::test_mock_embedding_deterministic \
+          pytest tests/test_chunking.py \
+                 tests/test_vector_search.py::test_mock_embedding_deterministic \
                  tests/test_vector_search.py::test_mock_embedding_different_inputs \
+                 tests/test_rag.py::test_chunking_integration_with_embedding \
                  -v

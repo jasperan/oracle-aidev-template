@@ -27,8 +27,11 @@ The API is live at `http://localhost:8000`. Hit `http://localhost:8000/docs` for
 
 ## What's Included
 
-- **FastAPI** REST API with health checks, CRUD, and search endpoints
+- **FastAPI** REST API with health checks, CRUD, search, RAG, and caching endpoints
 - **Oracle AI Vector Search** with mock embeddings (swap in Ollama for real ones)
+- **RAG pipeline** that retrieves context via vector search and generates answers with an LLM
+- **Semantic cache** that skips the LLM when a similar question was already answered
+- **Document chunking** with overlap for ingesting large documents
 - **Docker Compose** with Oracle 26ai Free, production app, and dev (hot reload) services
 - **Automated schema init** on first database boot
 - **Pytest suite** with mock and integration tests
@@ -43,14 +46,20 @@ Client Request
       v
   FastAPI App (app/main.py)
       |
-      +-- app/db.py ---------> Oracle 26ai Free (FREEPDB1)
-      |                              |
-      +-- app/vector_search.py       +-- documents table
-            |                        +-- VECTOR index
-            +-- embed() ----> Mock or Ollama embeddings
+      +-- app/db.py ------------> Oracle 26ai Free (FREEPDB1)
+      |                                |
+      +-- app/vector_search.py         +-- documents table + VECTOR index
+      |     +-- embed() -> Mock/Ollama +-- semantic_cache table + VECTOR index
+      |
+      +-- app/chunking.py -----> Splits large docs into overlapping chunks
+      |
+      +-- app/rag.py ----------> Retrieve context + generate answer
+      |     +-- cache check -> vector search -> LLM -> cache store
+      |
+      +-- app/cache.py --------> Semantic similarity cache (skip LLM on repeats)
 ```
 
-Documents are stored with their vector embeddings. Search queries get embedded the same way, then Oracle's `VECTOR_DISTANCE` function finds the closest matches by cosine similarity.
+The RAG pipeline checks the semantic cache first. If a similar question was already answered (cosine distance below threshold), it returns the cached response instantly. Otherwise it retrieves context via vector search, generates an answer with an LLM, and stores the result for future queries.
 
 ## API Endpoints
 
@@ -58,8 +67,12 @@ Documents are stored with their vector embeddings. Search queries get embedded t
 |--------|------|-------------|
 | `GET` | `/` | Health check (returns DB status) |
 | `POST` | `/documents` | Insert a document (auto-embeds the content) |
+| `POST` | `/documents/ingest` | Ingest a large doc (auto-chunks + embeds each chunk) |
 | `GET` | `/documents` | List stored documents |
 | `POST` | `/search` | Semantic similarity search |
+| `POST` | `/rag` | RAG: retrieve context + generate answer via LLM |
+| `GET` | `/cache/stats` | Semantic cache statistics |
+| `DELETE` | `/cache` | Invalidate cache entries by similarity |
 
 Full interactive docs at `/docs` (Swagger) or `/redoc`.
 
@@ -79,6 +92,11 @@ Copy `.env.example` to `.env` and adjust as needed:
 | `EMBEDDING_PROVIDER` | `mock` | `mock` or `ollama` |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model |
+| `RAG_PROVIDER` | `mock` | `mock` or `ollama` |
+| `OLLAMA_CHAT_MODEL` | `qwen3:8b` | LLM for RAG generation |
+| `RAG_TOP_K` | `5` | Number of docs to retrieve for context |
+| `RAG_USE_CACHE` | `true` | Enable semantic caching |
+| `CACHE_SIMILARITY_THRESHOLD` | `0.15` | Cosine distance for cache hits |
 
 ## Development
 

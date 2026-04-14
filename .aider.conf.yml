@@ -1,0 +1,16 @@
+# Aider Configuration: Oracle AI Dev Template
+
+conventions:
+  - "FastAPI app backed by Oracle 26ai Free with AI Vector Search, RAG pipeline, and semantic cache."
+  - "Python 3.11+, FastAPI, Pydantic v2, oracledb driver."
+  - "Oracle 26ai Free on port 1521, service FREEPDB1, container oracle-aidev-db."
+  - "Key files: app/main.py (endpoints), app/db.py (pool), app/vector_search.py (embeddings), app/rag.py (RAG), app/cache.py (semantic cache), app/chunking.py (document splitting)."
+  - "Run: ./scripts/start-db.sh to start Oracle, uvicorn app.main:app --reload for dev, pytest tests/ -v for tests."
+  - "Type hints on all functions. ruff for linting (line length 100, rules E/F/I/UP/B)."
+  - "SQL: bind variables (:param), never string concatenation. Use connection pool from app.db."
+  - "Vector columns use VECTOR type. Similarity via VECTOR_DISTANCE(col, :vec, COSINE) + ORDER BY + FETCH FIRST N ROWS ONLY."
+  - "Auto-increment: NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY."
+  - "RETURNING: RETURNING col INTO :bind_var with cursor.var(int), not RETURNING *."
+  - "Pagination: FETCH FIRST :n ROWS ONLY, not ROWNUM. Timestamps: CURRENT_TIMESTAMP, not NOW()."
+  - "CLOB for text > 4000 bytes."
+  - "Avoid SQL reserved words as column names: mode, level, comment, value, date, type, status, user, role, size."

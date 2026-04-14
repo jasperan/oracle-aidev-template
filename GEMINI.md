@@ -32,9 +32,12 @@ DB-dependent tests auto-skip when Oracle isn't running. Mock embedding tests alw
 
 ## Key Files
 
-- `app/main.py` -- FastAPI app with health check (`GET /`), document CRUD (`POST/GET /documents`), and vector search (`POST /search`)
+- `app/main.py` -- FastAPI app with health check (`GET /`), document CRUD (`POST/GET /documents`), vector search (`POST /search`), RAG (`POST /rag`), cache (`GET /cache/stats`, `DELETE /cache`), and document ingestion (`POST /documents/ingest`)
 - `app/db.py` -- Oracle connection pool using `oracledb`. Lazy init, context manager pattern via `get_connection()`
 - `app/vector_search.py` -- Embedding generation (mock hash-based or Ollama) and `VECTOR_DISTANCE` similarity queries
+- `app/rag.py` -- RAG pipeline: retrieve context chunks via vector search, generate answers via Ollama
+- `app/cache.py` -- Semantic cache: store query-response pairs with vector embeddings, skip LLM on similar repeat questions
+- `app/chunking.py` -- Document chunking: split large documents into overlapping chunks for ingestion
 - `scripts/init-schema.sql` -- Creates `documents` table (with `VECTOR` column + HNSW index) and `metadata` table
 - `docker-compose.yml` -- Oracle 26ai Free (`oracle-aidev-db`), production app, and dev container with hot-reload
 - `tests/conftest.py` -- Fixtures: `db_available` (skips when no DB), `db_connection` (provides live connection)
@@ -101,6 +104,21 @@ cur.execute(
 new_id = doc_id_var.getvalue()[0]
 ```
 
+## RAG Pipeline
+
+The `POST /rag` endpoint retrieves relevant document chunks via vector search, then generates an answer using Ollama. Controlled by `RAG_PROVIDER` (default: `ollama`), `OLLAMA_CHAT_MODEL`, and `RAG_TOP_K`. Set `RAG_USE_CACHE=true` to check the semantic cache before calling the LLM.
+
+## Semantic Cache
+
+The cache stores query-response pairs with vector embeddings. On repeated or similar questions (within `CACHE_SIMILARITY_THRESHOLD`), the cached response is returned without hitting the LLM.
+
+- `GET /cache/stats` -- cache hit/miss counts and entry total.
+- `DELETE /cache` -- flush all cached entries.
+
+## Document Chunking
+
+The `POST /documents/ingest` endpoint accepts a large document and splits it into overlapping chunks. Each chunk is stored with a `parent_id` linking back to the original document and a `chunk_index` for ordering.
+
 ## Common Pitfalls
 
 - **Reserved words as columns**: don't use `mode`, `level`, `comment`, `value`, `date`, `type`, `status`, `user`, `role`, `size` as column names. Rename them or quote with double quotes.
@@ -122,3 +140,8 @@ Defaults work out of the box. Override via `.env` file (see `.env.example`):
 | `EMBEDDING_PROVIDER` | `mock` | `mock` or `ollama` |
 | `OLLAMA_HOST` | `http://localhost:11434` | Only needed when provider is `ollama` |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Only needed when provider is `ollama` |
+| `RAG_PROVIDER` | `ollama` | RAG generation backend |
+| `OLLAMA_CHAT_MODEL` | `llama3` | Ollama model for RAG generation |
+| `RAG_TOP_K` | `5` | Number of chunks retrieved for RAG context |
+| `RAG_USE_CACHE` | `true` | Check semantic cache before calling LLM |
+| `CACHE_SIMILARITY_THRESHOLD` | `0.95` | Cosine similarity threshold for cache hits |

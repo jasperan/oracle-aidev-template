@@ -105,3 +105,105 @@ cur.execute("SELECT * FROM docs WHERE id = :id", {"id": 42})
 # Bad (SQL injection risk)
 cur.execute(f"SELECT * FROM docs WHERE id = {user_input}")
 ```
+
+## Semantic Cache Patterns
+
+Store query-response pairs with vector embeddings to skip the LLM on similar repeat questions.
+
+**Cache table:**
+```sql
+CREATE TABLE semantic_cache (
+    id              NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    query_text      CLOB NOT NULL,
+    response_text   CLOB NOT NULL,
+    query_embedding VECTOR,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE VECTOR INDEX idx_cache_embedding
+    ON semantic_cache (query_embedding)
+    ORGANIZATION NEIGHBOR PARTITIONS
+    WITH DISTANCE COSINE;
+```
+
+**Cache lookup (find a similar cached query):**
+```sql
+SELECT id, query_text, response_text,
+       VECTOR_DISTANCE(query_embedding, :query_vec, COSINE) AS distance
+FROM semantic_cache
+WHERE VECTOR_DISTANCE(query_embedding, :query_vec, COSINE) < :threshold
+ORDER BY VECTOR_DISTANCE(query_embedding, :query_vec, COSINE)
+FETCH FIRST 1 ROWS ONLY;
+```
+
+**Cache insert:**
+```sql
+INSERT INTO semantic_cache (query_text, response_text, query_embedding)
+VALUES (:query, :response, :embedding);
+```
+
+## RAG Query Patterns
+
+Retrieve relevant chunks via vector search, then pass them as context to the LLM for generation.
+
+**Retrieve top-k chunks:**
+```sql
+SELECT id, content, parent_id, chunk_index,
+       VECTOR_DISTANCE(embedding, :query_vec, COSINE) AS distance
+FROM document_chunks
+ORDER BY VECTOR_DISTANCE(embedding, :query_vec, COSINE)
+FETCH FIRST :top_k ROWS ONLY;
+```
+
+**Python retrieve-then-generate flow:**
+```python
+# 1. Embed the query
+query_vec = generate_embedding(query_text)
+
+# 2. Retrieve context chunks from Oracle
+cur.execute(retrieval_sql, {"query_vec": query_vec, "top_k": 5})
+chunks = [row[1] for row in cur.fetchall()]
+
+# 3. Build prompt with context
+context = "\n---\n".join(chunks)
+prompt = f"Answer based on this context:\n{context}\n\nQuestion: {query_text}"
+
+# 4. Generate via Ollama
+response = ollama_chat(model=chat_model, prompt=prompt)
+```
+
+## Document Chunking Patterns
+
+Split large documents into overlapping chunks. Each chunk tracks its parent document and position.
+
+**Chunks table:**
+```sql
+CREATE TABLE document_chunks (
+    id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    content     CLOB NOT NULL,
+    embedding   VECTOR,
+    parent_id   NUMBER NOT NULL,
+    chunk_index NUMBER NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_chunk_parent FOREIGN KEY (parent_id) REFERENCES documents(id)
+);
+
+CREATE VECTOR INDEX idx_chunk_embedding
+    ON document_chunks (embedding)
+    ORGANIZATION NEIGHBOR PARTITIONS
+    WITH DISTANCE COSINE;
+```
+
+**Insert a chunk:**
+```sql
+INSERT INTO document_chunks (content, embedding, parent_id, chunk_index)
+VALUES (:content, :embedding, :parent_id, :chunk_index);
+```
+
+**Retrieve all chunks for a document (in order):**
+```sql
+SELECT id, content, chunk_index
+FROM document_chunks
+WHERE parent_id = :doc_id
+ORDER BY chunk_index;
+```

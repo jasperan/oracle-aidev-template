@@ -24,7 +24,7 @@ venv/
 .coverage
 htmlcov/
 
-# Agent/tool directories (local-only)
+# Agent/tool directories (local-only, NOT shipped with template)
 .agents/
 .claude/settings.local.json
 .crush/
@@ -32,6 +32,12 @@ htmlcov/
 .serena/
 .omc/
 .playwright-mcp/
+
+# NOTE: These agent config files ARE tracked (they ship with the template):
+# .cursorrules, .windsurfrules, .clinerules, .opencode, .aider.conf.yml
+# .amazonq/, .augment/, .continue/
+# .github/copilot-instructions.md
+# CLAUDE.md, AGENTS.md, GEMINI.md
 
 # Generated outputs
 dogfood-output/

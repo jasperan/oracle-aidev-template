@@ -127,16 +127,25 @@ mypy app/ --ignore-missing-imports
 
 ## AI Coding Agent Support
 
-This template works with AI coding assistants. Each tool reads its own instruction file:
+This template ships with config files for 13 AI coding agents. Each tool reads its own instruction file with project structure, run commands, and Oracle SQL conventions.
 
-| Agent | Config File |
-|-------|-------------|
-| Claude Code | `CLAUDE.md` |
-| GitHub Copilot | `.github/copilot-instructions.md` |
-| OpenAI Codex | `AGENTS.md` |
-| Google Gemini | `GEMINI.md` |
+| Agent | Config File | Format |
+|-------|-------------|--------|
+| Claude Code | `CLAUDE.md` | Markdown |
+| GitHub Copilot | `.github/copilot-instructions.md` | Markdown |
+| OpenAI Codex | `AGENTS.md` | Markdown |
+| Google Gemini | `GEMINI.md` | Markdown |
+| Cursor | `.cursorrules` | Plain text |
+| Windsurf / Codeium | `.windsurfrules` | Plain text |
+| Cline | `.clinerules` | Plain text |
+| OpenCode | `.opencode` | Plain text |
+| Amazon Q | `.amazonq/rules.md` | Markdown |
+| Augment | `.augment/rules.md` | Markdown |
+| Continue | `.continue/rules.md` | Markdown |
+| Aider | `.aider.conf.yml` | YAML |
+| Serena | `.serena/` (auto-detected) | Project config |
 
-These files tell the agent about the project structure, how to run tests, and what conventions to follow. Create whichever ones you need for your workflow.
+All files contain the same core instructions adapted to each platform's expected format. They cover the project layout, how to start the database, run the server, run tests, and the Oracle-specific SQL patterns this codebase uses.
 
 ## License
 

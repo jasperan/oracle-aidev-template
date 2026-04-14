@@ -31,9 +31,12 @@ Tests with the `db_available` fixture skip automatically when Oracle isn't runni
 
 ```
 app/
-  main.py            - FastAPI application (health, CRUD, vector search endpoints)
+  main.py            - FastAPI application (health, CRUD, vector search, RAG, cache, ingest endpoints)
   db.py              - Oracle connection pool (oracledb, lazy init, context manager)
   vector_search.py   - Embedding generation + VECTOR_DISTANCE similarity queries
+  rag.py             - RAG pipeline: retrieve context via vector search, generate answers via Ollama
+  cache.py           - Semantic cache: store query-response pairs with embeddings, skip LLM on similar repeats
+  chunking.py        - Document chunking: split large docs into overlapping chunks for ingestion
 scripts/
   start-db.sh        - Start Oracle container, wait for healthy
   stop-db.sh         - Stop Oracle container
@@ -84,6 +87,21 @@ The `EMBEDDING_PROVIDER` env var controls embedding generation:
 - `mock` (default): deterministic hash-based vectors, no external dependencies. Good for testing.
 - `ollama`: real embeddings via local Ollama instance (`OLLAMA_HOST`, `OLLAMA_MODEL` env vars).
 
+## RAG Pipeline
+
+The `POST /rag` endpoint retrieves relevant document chunks via vector search, then generates an answer using Ollama. Controlled by `RAG_PROVIDER` (default: `ollama`), `OLLAMA_CHAT_MODEL`, and `RAG_TOP_K`. Set `RAG_USE_CACHE=true` to check the semantic cache before calling the LLM.
+
+## Semantic Cache
+
+The cache stores query-response pairs with vector embeddings. On repeated or similar questions (within `CACHE_SIMILARITY_THRESHOLD`), the cached response is returned without hitting the LLM.
+
+- `GET /cache/stats` -- cache hit/miss counts and entry total.
+- `DELETE /cache` -- flush all cached entries.
+
+## Document Chunking
+
+The `POST /documents/ingest` endpoint accepts a large document and splits it into overlapping chunks. Each chunk is stored with a `parent_id` linking back to the original document and a `chunk_index` for ordering.
+
 ## Testing Strategy
 
 - Tests requiring Oracle use the `db_available` fixture from `conftest.py`.
@@ -104,3 +122,8 @@ All variables have defaults. See `.env.example` for the complete list. Key ones:
 | `EMBEDDING_PROVIDER` | `mock` | Embedding backend: `mock` or `ollama` |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API URL |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model |
+| `RAG_PROVIDER` | `ollama` | RAG generation backend |
+| `OLLAMA_CHAT_MODEL` | `llama3` | Ollama model for RAG generation |
+| `RAG_TOP_K` | `5` | Number of chunks retrieved for RAG context |
+| `RAG_USE_CACHE` | `true` | Check semantic cache before calling LLM |
+| `CACHE_SIMILARITY_THRESHOLD` | `0.95` | Cosine similarity threshold for cache hits |

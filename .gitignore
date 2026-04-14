@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Agent/tool directories (local-only)
+.agents/
+.claude/
+.crush/
+.openhands/
+.serena/
+.omc/
+.playwright-mcp/
+
+# Generated outputs
+dogfood-output/
+docs/plans/
+task_plan.md
+findings.md
+progress.md
+content/
+
+# OS
+.DS_Store
+Thumbs.db

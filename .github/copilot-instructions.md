@@ -1,0 +1,47 @@
+# Copilot Instructions: Oracle AI Dev Template
+
+FastAPI app backed by Oracle 26ai Free with AI Vector Search.
+
+## Stack
+
+- Python 3.11+, FastAPI, Pydantic v2, oracledb
+- Oracle 26ai Free on port 1521, service `FREEPDB1`, container `oracle-aidev-db`
+- Embeddings: mock (default) or Ollama
+
+## Key Files
+
+- `app/main.py` -- FastAPI endpoints (health, CRUD, vector search)
+- `app/db.py` -- Connection pool (`get_connection()` context manager)
+- `app/vector_search.py` -- Embedding + `VECTOR_DISTANCE` queries
+- `scripts/init-schema.sql` -- Table DDL with VECTOR columns and HNSW indexes
+
+## Running
+
+```bash
+./scripts/start-db.sh              # start Oracle container
+uvicorn app.main:app --reload      # start API server
+pytest tests/ -v                   # run tests (DB tests auto-skip)
+docker compose up                  # full stack
+```
+
+## Code Style
+
+- Type hints on all functions
+- ruff for linting (line length 100, rules: E/F/I/UP/B)
+- Bind variables in SQL (`:param`), never string concatenation
+- Use the connection pool from `app.db`, not standalone connections
+
+## Oracle SQL Rules
+
+- Auto-increment: `NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY`
+- Vector columns: `VECTOR` type (no dimension in DDL)
+- Vector index: `CREATE VECTOR INDEX ... ORGANIZATION NEIGHBOR PARTITIONS WITH DISTANCE COSINE`
+- Similarity: `VECTOR_DISTANCE(col, :vec, COSINE)` + `ORDER BY` + `FETCH FIRST N ROWS ONLY`
+- RETURNING: `RETURNING col INTO :bind_var` with `cursor.var(int)` -- not `RETURNING *`
+- Pagination: `FETCH FIRST :n ROWS ONLY` -- not `ROWNUM`
+- Timestamps: `CURRENT_TIMESTAMP` -- not `NOW()`
+- CLOB for text > 4000 bytes
+
+## Avoid These Column Names
+
+SQL reserved words: `mode`, `level`, `comment`, `value`, `date`, `type`, `status`, `user`, `role`, `size`. Rename or double-quote them.

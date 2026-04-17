@@ -26,7 +26,7 @@ htmlcov/
 
 # Agent/tool directories (local-only, NOT shipped with template)
 .agents/
-.claude/settings.local.json
+.claude/
 .crush/
 .openhands/
 .serena/

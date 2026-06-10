@@ -47,7 +47,7 @@ Client -> FastAPI (app/main.py)
 
 - `app/db.py`: Lazy-init connection pool via `oracledb`. All DB access goes through `get_connection()` context manager.
 - `app/vector_search.py`: Two embedding providers via `EMBEDDING_PROVIDER` env var. `mock` = deterministic hash-based vectors (no external deps). `ollama` = calls a local Ollama instance.
-- `app/chunking.py`: Sliding-window text chunker. Returns `Chunk` dataclasses with `.text`, `.index`, `.start`, `.end`.
+- `app/chunking.py`: Sliding-window text chunker. Returns `Chunk` dataclasses with `.text` and `.index`.
 - `app/rag.py`: Retrieves top-k docs via vector search, stuffs them into a prompt, calls Ollama for generation. Returns a dataclass serialized with `asdict()`.
 - `app/cache.py`: Semantic cache backed by `semantic_cache` table. Checks for similar past questions before hitting the LLM. Tracks `hit_count`. Supports threshold-based invalidation.
 

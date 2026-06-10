@@ -84,7 +84,7 @@ def store(query: str, response: str, model_name: str = "unknown") -> int:
 
 def invalidate(query: str, threshold: float | None = None) -> int:
     """Delete cache entries similar to the given query. Returns count deleted."""
-    thresh = threshold or CACHE_THRESHOLD
+    thresh = threshold if threshold is not None else CACHE_THRESHOLD
     query_vec = embed(query)
     with get_connection() as conn:
         with conn.cursor() as cur:

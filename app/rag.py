@@ -96,7 +96,7 @@ def query(
     4. Store result in semantic cache
     5. Return structured response
     """
-    k = top_k or RAG_TOP_K
+    k = top_k if top_k is not None else RAG_TOP_K
     prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
     should_cache = use_cache if use_cache is not None else RAG_USE_CACHE
 

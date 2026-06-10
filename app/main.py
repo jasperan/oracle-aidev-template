@@ -18,7 +18,8 @@ from dataclasses import asdict
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from app import __version__
+from app import __version__, cache, rag
+from app.chunking import chunk_text
 from app.db import check_health, close_pool
 from app.vector_search import insert_document, list_documents, search_similar
 
@@ -59,9 +60,9 @@ class SearchQuery(BaseModel):
 
 class RAGQuery(BaseModel):
     question: str = Field(..., min_length=1)
-    top_k: int = Field(default=5, ge=1, le=20)
+    top_k: int | None = Field(default=None, ge=1, le=20)
     system_prompt: str | None = None
-    use_cache: bool = True
+    use_cache: bool | None = None
 
 
 class CacheInvalidate(BaseModel):
@@ -91,8 +92,6 @@ def create_document(doc: DocumentCreate):
 @app.post("/documents/ingest", status_code=201)
 def ingest_document(doc: DocumentIngest):
     """Ingest a large document: auto-chunks it and embeds each chunk separately."""
-    from app.chunking import chunk_text
-
     chunks = chunk_text(doc.content, chunk_size=doc.chunk_size, chunk_overlap=doc.chunk_overlap)
 
     # Insert parent document (no embedding, just metadata)
@@ -135,8 +134,6 @@ def rag_query(q: RAGQuery):
     Checks the semantic cache first. If a similar question was already answered,
     returns the cached response (saving an LLM call).
     """
-    from app import rag
-
     response = rag.query(
         question=q.question,
         top_k=q.top_k,
@@ -149,15 +146,11 @@ def rag_query(q: RAGQuery):
 @app.get("/cache/stats")
 def cache_stats():
     """Return semantic cache statistics (total entries, total hits)."""
-    from app import cache
-
     return cache.stats()
 
 
 @app.delete("/cache")
 def cache_invalidate(q: CacheInvalidate):
     """Delete cache entries semantically similar to the given query."""
-    from app import cache
-
     deleted = cache.invalidate(q.query, threshold=q.threshold)
     return {"deleted": deleted, "query": q.query}

@@ -32,13 +32,12 @@ def test_chunk_overlap():
     text = "Alpha bravo charlie. Delta echo foxtrot. Golf hotel india. " * 10
     chunks = chunk_text(text, chunk_size=100, chunk_overlap=30)
     assert len(chunks) > 1
-    # With overlap, later chunks should contain some text from previous chunks
+    # With overlap, later chunks should contain some text from previous chunks.
+    # Every consecutive pair must share at least one word from the boundary.
     for i in range(1, len(chunks)):
-        # The overlap means some words from the end of chunk[i-1] appear in chunk[i]
         prev_words = set(chunks[i - 1].text.split()[-3:])
         curr_words = set(chunks[i].text.split()[:5])
-        # At least some word overlap expected
-        assert len(prev_words & curr_words) > 0 or True  # Soft check
+        assert len(prev_words & curr_words) > 0
 
 
 def test_chunk_indices_sequential():

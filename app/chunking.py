@@ -13,12 +13,10 @@ from dataclasses import dataclass
 
 @dataclass
 class Chunk:
-    """A chunk of text with its position metadata."""
+    """A chunk of text and its sequential index."""
 
     text: str
     index: int
-    start_char: int
-    end_char: int
 
 
 # Splitting hierarchy: try paragraph breaks first, then sentences, then words
@@ -50,7 +48,7 @@ def chunk_text(
         min_chunk_size: Minimum chunk size. Chunks smaller than this merge into neighbors.
 
     Returns:
-        List of Chunk objects with text and position metadata.
+        List of Chunk objects with text and a sequential index.
     """
     if not text or not text.strip():
         return []
@@ -59,23 +57,20 @@ def chunk_text(
 
     # If text fits in one chunk, return it directly
     if len(text) <= chunk_size:
-        return [Chunk(text=text, index=0, start_char=0, end_char=len(text))]
+        return [Chunk(text=text, index=0)]
 
     raw_chunks = _recursive_split(text, chunk_size)
 
     # Merge tiny chunks into their neighbors
     merged: list[str] = []
     for piece in raw_chunks:
-        if merged and len(merged[-1]) < min_chunk_size:
-            merged[-1] = merged[-1] + " " + piece
-        elif merged and len(piece) < min_chunk_size:
+        if merged and (len(merged[-1]) < min_chunk_size or len(piece) < min_chunk_size):
             merged[-1] = merged[-1] + " " + piece
         else:
             merged.append(piece)
 
     # Apply overlap: prepend tail of previous chunk to current chunk
     chunks: list[Chunk] = []
-    offset = 0
     for i, piece in enumerate(merged):
         if i > 0 and chunk_overlap > 0:
             prev = merged[i - 1]
@@ -86,11 +81,7 @@ def chunk_text(
                 overlap_text = overlap_text[space_idx + 1 :]
             piece = overlap_text + " " + piece
 
-        start = max(0, offset - len(piece) + len(merged[i]) if i > 0 else 0)
-        chunks.append(
-            Chunk(text=piece.strip(), index=i, start_char=start, end_char=start + len(piece))
-        )
-        offset += len(merged[i])
+        chunks.append(Chunk(text=piece.strip(), index=i))
 
     return chunks
 

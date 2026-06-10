@@ -62,7 +62,8 @@ def test_cache_invalidate(db_available):
 
     cache.store("test invalidation query", "test response", "test")
     deleted = cache.invalidate("test invalidation query", threshold=0.5)
-    assert deleted >= 0  # May or may not find the entry depending on timing
+    # The exact-match entry we just stored must be deleted.
+    assert deleted >= 1
 
 
 def test_rag_with_cache(db_available):

@@ -19,8 +19,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from app import __version__, cache, rag
+from app.cache import CACHE_THRESHOLD
 from app.chunking import chunk_text
 from app.db import check_health, close_pool
+from app.rag import DEFAULT_SYSTEM_PROMPT, RAG_TOP_K, RAG_USE_CACHE
 from app.vector_search import insert_document, list_documents, search_similar
 
 
@@ -60,14 +62,14 @@ class SearchQuery(BaseModel):
 
 class RAGQuery(BaseModel):
     question: str = Field(..., min_length=1)
-    top_k: int | None = Field(default=None, ge=1, le=20)
-    system_prompt: str | None = None
-    use_cache: bool | None = None
+    top_k: int = Field(default=RAG_TOP_K, ge=1, le=20)
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    use_cache: bool = RAG_USE_CACHE
 
 
 class CacheInvalidate(BaseModel):
     query: str = Field(..., min_length=1)
-    threshold: float | None = None
+    threshold: float = CACHE_THRESHOLD
 
 
 # --- Endpoints ---
@@ -94,7 +96,7 @@ def ingest_document(doc: DocumentIngest):
     """Ingest a large document: auto-chunks it and embeds each chunk separately."""
     chunks = chunk_text(doc.content, chunk_size=doc.chunk_size, chunk_overlap=doc.chunk_overlap)
 
-    # Insert parent document (no embedding, just metadata)
+    # Insert a parent document holding a short preview (embedded like any document)
     preview = doc.content[:200] + "..." if len(doc.content) > 200 else doc.content
     parent_id = insert_document(doc.title, preview)
 

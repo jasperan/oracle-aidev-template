@@ -49,13 +49,18 @@ def test_chunk_indices_sequential():
 
 
 def test_respects_sentence_boundaries():
-    """Chunks should prefer breaking at sentence boundaries."""
+    """Chunks should prefer breaking at sentence boundaries without corrupting text."""
     text = "First sentence here. Second sentence here. Third sentence here. Fourth sentence here."
     chunks = chunk_text(text, chunk_size=50, chunk_overlap=0)
-    # Each chunk should end at or near a sentence boundary
     for chunk in chunks:
         # Should not cut mid-word (no trailing partial words)
         assert not chunk.text.endswith("-")
+        # Rejoining must never duplicate sentence punctuation
+        assert ".." not in chunk.text
+        assert "!!" not in chunk.text
+        assert "??" not in chunk.text
+        # Merging must not blow past the requested chunk size
+        assert len(chunk.text) <= 50
 
 
 def test_paragraph_boundaries():

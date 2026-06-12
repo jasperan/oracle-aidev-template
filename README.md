@@ -18,9 +18,13 @@ cp .env.example .env
 docker compose up -d oracle-db
 # First boot takes ~2 minutes while Oracle initializes
 
-# 3. Run the app
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
+# 3. Install deps and run the app (uv recommended)
+uv sync --group dev
+uv run uvicorn app.main:app --reload
+
+# Or with plain pip:
+# pip install -e ".[dev]"
+# uvicorn app.main:app --reload
 ```
 
 The API is live at `http://localhost:8000`. Hit `http://localhost:8000/docs` for the interactive Swagger UI.
@@ -110,19 +114,18 @@ docker compose up -d dev    # Dev service only (hot reload on code changes)
 **Testing:**
 
 ```bash
-# Mock-only tests (no DB needed)
-pytest tests/test_vector_search.py::test_mock_embedding_deterministic -v
-pytest tests/test_vector_search.py::test_mock_embedding_different_inputs -v
+# Mock tests run without a database; DB-backed tests auto-skip when Oracle is unreachable
+uv run pytest tests/
 
-# Full suite (requires running Oracle DB)
-pytest tests/ -v
+# Single mock-only test
+uv run pytest tests/test_vector_search.py::test_mock_embedding_deterministic
 ```
 
 **Linting and type checking:**
 
 ```bash
-ruff check app/ tests/
-mypy app/ --ignore-missing-imports
+uv run ruff check app/ tests/
+uv run mypy app/ --ignore-missing-imports
 ```
 
 ## AI Coding Agent Support

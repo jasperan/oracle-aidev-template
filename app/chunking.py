@@ -7,7 +7,6 @@ Inspired by oci-genai-service's RecursiveChunker and cAST-efficient-ollama's
 random_chunker patterns.
 """
 
-import re
 from dataclasses import dataclass
 
 
@@ -24,12 +23,22 @@ _SEPARATORS = ["\n\n", "\n", ". ", "! ", "? ", "; ", ", ", " "]
 
 
 def _split_at_separator(text: str, sep: str) -> list[str]:
-    """Split text at a separator, keeping the separator at the end of each piece."""
-    if sep == ". " or sep == "! " or sep == "? ":
-        # For sentence-ending punctuation, keep the punctuation with the preceding text
-        parts = re.split(f"(?<={re.escape(sep[0])})\\s", text)
-        return [p for p in parts if p.strip()]
-    pieces = text.split(sep)
+    """Split text at a separator, keeping the separator attached to each preceding piece.
+
+    Every piece (except possibly the last) retains its trailing separator, so the
+    pieces can be rejoined with ``""`` to reconstruct the original text without
+    duplicating the separator.
+    """
+    pieces = []
+    start = 0
+    sep_len = len(sep)
+    idx = text.find(sep)
+    while idx != -1:
+        pieces.append(text[start : idx + sep_len])
+        start = idx + sep_len
+        idx = text.find(sep, start)
+    if start < len(text):
+        pieces.append(text[start:])
     return [p for p in pieces if p.strip()]
 
 
@@ -61,10 +70,14 @@ def chunk_text(
 
     raw_chunks = _recursive_split(text, chunk_size)
 
-    # Merge tiny chunks into their neighbors
+    # Merge tiny chunks into their neighbors, but never past the target chunk_size
     merged: list[str] = []
     for piece in raw_chunks:
-        if merged and (len(merged[-1]) < min_chunk_size or len(piece) < min_chunk_size):
+        if (
+            merged
+            and (len(merged[-1]) < min_chunk_size or len(piece) < min_chunk_size)
+            and len(merged[-1]) + 1 + len(piece) <= chunk_size
+        ):
             merged[-1] = merged[-1] + " " + piece
         else:
             merged.append(piece)
@@ -98,19 +111,21 @@ def _recursive_split(text: str, chunk_size: int) -> list[str]:
                 result: list[str] = []
                 current = ""
                 for piece in pieces:
-                    candidate = (current + sep + piece).strip() if current else piece
-                    if len(candidate) <= chunk_size:
+                    # Pieces already carry their trailing separator, so join with "".
+                    candidate = current + piece
+                    if len(candidate.strip()) <= chunk_size:
                         current = candidate
                     else:
-                        if current:
-                            result.append(current)
+                        if current.strip():
+                            result.append(current.strip())
                         # If single piece exceeds chunk_size, recurse with next separator
-                        if len(piece) > chunk_size:
+                        if len(piece.strip()) > chunk_size:
                             result.extend(_recursive_split(piece, chunk_size))
+                            current = ""
                         else:
                             current = piece
-                if current:
-                    result.append(current)
+                if current.strip():
+                    result.append(current.strip())
                 return result
 
     # Last resort: hard split at chunk_size

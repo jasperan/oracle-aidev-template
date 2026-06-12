@@ -54,7 +54,7 @@ def _build_context(sources: list[dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(parts)
 
 
-def _generate_mock(context: str, query: str, system_prompt: str) -> str:
+def _generate_mock(context: str, query: str) -> str:
     """Mock generation: return context summary without calling an LLM."""
     return (
         f"[Mock RAG response - set RAG_PROVIDER=ollama for real generation]\n\n"
@@ -84,9 +84,9 @@ def _generate_ollama(context: str, query: str, system_prompt: str) -> str:
 
 def query(
     question: str,
-    top_k: int | None = None,
-    system_prompt: str | None = None,
-    use_cache: bool | None = None,
+    top_k: int = RAG_TOP_K,
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
+    use_cache: bool = RAG_USE_CACHE,
 ) -> RAGResponse:
     """Run the full RAG pipeline.
 
@@ -96,9 +96,9 @@ def query(
     4. Store result in semantic cache
     5. Return structured response
     """
-    k = top_k if top_k is not None else RAG_TOP_K
-    prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
-    should_cache = use_cache if use_cache is not None else RAG_USE_CACHE
+    k = top_k
+    prompt = system_prompt
+    should_cache = use_cache
 
     # Step 1: Check semantic cache
     if should_cache:
@@ -121,7 +121,7 @@ def query(
         answer = _generate_ollama(context, question, prompt)
         model = OLLAMA_CHAT_MODEL
     else:
-        answer = _generate_mock(context, question, prompt)
+        answer = _generate_mock(context, question)
         model = "mock"
 
     # Step 4: Store in semantic cache

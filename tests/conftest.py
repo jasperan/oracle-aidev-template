@@ -11,20 +11,11 @@ os.environ.setdefault("EMBEDDING_PROVIDER", "mock")
 @pytest.fixture(scope="session")
 def db_available():
     """Check if Oracle DB is reachable. Skip tests if not."""
-    try:
-        import oracledb
+    from app.db import check_health
 
-        conn = oracledb.connect(
-            user=os.getenv("ORACLE_USER", "system"),
-            password=os.getenv("ORACLE_PWD", "FreeP4ssw0rd!"),
-            dsn=f"{os.getenv('ORACLE_HOST', 'localhost')}:"
-            f"{os.getenv('ORACLE_PORT', '1521')}/"
-            f"{os.getenv('ORACLE_SERVICE', 'FREEPDB1')}",
-        )
-        conn.close()
-        return True
-    except Exception:
+    if check_health()["status"] != "healthy":
         pytest.skip("Oracle DB not available")
+    return True
 
 
 @pytest.fixture

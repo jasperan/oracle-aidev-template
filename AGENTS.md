@@ -54,7 +54,7 @@ tests/
 - **Port**: `1521` (env: `ORACLE_PORT`)
 - **Service**: `FREEPDB1` (env: `ORACLE_SERVICE`)
 - **User**: `system` (env: `ORACLE_USER`)
-- **Password**: `FreeP4ssw0rd!` (env: `ORACLE_PWD`)
+- **Password**: no default; `ORACLE_PWD` must be set (see `.env.example`)
 - **Container name**: `oracle-aidev-db`
 
 The app uses `oracledb.create_pool()` for connection pooling. Always acquire connections through `app.db.get_connection()`, which returns a context manager.
@@ -118,7 +118,7 @@ All variables have defaults. See `.env.example` for the complete list. Key ones:
 | `ORACLE_HOST` | `localhost` | DB hostname |
 | `ORACLE_PORT` | `1521` | DB listener port |
 | `ORACLE_SERVICE` | `FREEPDB1` | Pluggable database service name |
-| `ORACLE_PWD` | `FreeP4ssw0rd!` | DB password |
+| `ORACLE_PWD` | *(required)* | DB password |
 | `EMBEDDING_PROVIDER` | `mock` | Embedding backend: `mock` or `ollama` |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API URL |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Ollama embedding model |

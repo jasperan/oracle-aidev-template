@@ -5,12 +5,14 @@ from contextlib import contextmanager
 
 import oracledb
 
-# Connection config from environment
+# Connection config from environment.
+# No password default is shipped: ORACLE_PWD must be set explicitly, otherwise the
+# pool refuses to connect instead of authenticating with a published credential.
 HOST = os.getenv("ORACLE_HOST", "localhost")
 PORT = int(os.getenv("ORACLE_PORT", "1521"))
 SERVICE = os.getenv("ORACLE_SERVICE", "FREEPDB1")
 USER = os.getenv("ORACLE_USER", "system")
-PASSWORD = os.getenv("ORACLE_PWD", "FreeP4ssw0rd!")
+PASSWORD = os.getenv("ORACLE_PWD")
 
 DSN = f"{HOST}:{PORT}/{SERVICE}"
 
@@ -21,6 +23,11 @@ _pool: oracledb.ConnectionPool | None = None
 def get_pool() -> oracledb.ConnectionPool:
     """Get or create the connection pool."""
     global _pool
+    if not PASSWORD:
+        raise RuntimeError(
+            "ORACLE_PWD is not set. Set a strong database password in the environment "
+            "or in .env (see .env.example) before starting the app."
+        )
     if _pool is None:
         _pool = oracledb.create_pool(
             user=USER,

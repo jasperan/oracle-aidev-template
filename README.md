@@ -13,6 +13,7 @@ Click **"Use this template"** on GitHub to create your own repo from this starte
 git clone https://github.com/YOUR_USER/YOUR_REPO.git
 cd YOUR_REPO
 cp .env.example .env
+# then edit .env and set ORACLE_PWD to a strong password (required)
 
 # 2. Start Oracle 26ai Free
 docker compose up -d oracle-db
@@ -82,11 +83,13 @@ Full interactive docs at `/docs` (Swagger) or `/redoc`.
 
 ## Configuration
 
-Copy `.env.example` to `.env` and adjust as needed:
+Copy `.env.example` to `.env` and adjust as needed. `ORACLE_PWD` is required and has no
+shipped default; published ports bind to `127.0.0.1` (`APP_BIND`, `DEV_BIND`, `ORACLE_BIND`)
+so the API and listener are not exposed on every host interface:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ORACLE_PWD` | `FreeP4ssw0rd!` | Database password |
+| `ORACLE_PWD` | *(required)* | Database password — no default is shipped |
 | `ORACLE_USER` | `system` | Database user |
 | `ORACLE_HOST` | `localhost` | Database host |
 | `ORACLE_PORT` | `1521` | Database port |

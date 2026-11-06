@@ -77,7 +77,7 @@ Vector indexes (`idx_documents_embedding`, `idx_cache_embedding`) use HNSW with 
 ## Oracle Database
 
 - **Container**: `oracle-aidev-db` on port 1521 (also exposes EM on 5500), service `FREEPDB1`
-- **Default creds**: `system` / `FreeP4ssw0rd!` (override via `ORACLE_PWD`)
+- **Creds**: `system` / `ORACLE_PWD` (required; no default password is shipped)
 - **sqlplus**: `docker exec -it oracle-aidev-db sqlplus system/${ORACLE_PWD}@FREEPDB1`
 - **Data volume**: `oracle-data` persists across restarts
 - **Schema init**: `scripts/init-schema.sql` is mounted to `/opt/oracle/scripts/startup/` and runs automatically on first boot only. Re-run manually if you wipe the volume.
@@ -99,7 +99,7 @@ Copy `.env.example` to `.env`. Key vars:
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `ORACLE_PWD` | `FreeP4ssw0rd!` | DB password |
+| `ORACLE_PWD` | *(required)* | DB password |
 | `ORACLE_HOST` | `localhost` | `oracle-db` when running inside Docker |
 | `ORACLE_PORT` | `1521` | |
 | `EMBEDDING_PROVIDER` | `mock` | `mock` or `ollama` |

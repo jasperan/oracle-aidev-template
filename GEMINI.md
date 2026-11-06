@@ -47,7 +47,7 @@ DB-dependent tests auto-skip when Oracle isn't running. Mock embedding tests alw
 - **Container**: `oracle-aidev-db`
 - **Port**: 1521
 - **Service**: `FREEPDB1`
-- **User/Password**: `system` / `FreeP4ssw0rd!` (configurable via env vars)
+- **User/Password**: `system` / `ORACLE_PWD` (required; no default password is shipped)
 
 Connect via sqlplus:
 ```bash
@@ -136,7 +136,7 @@ Defaults work out of the box. Override via `.env` file (see `.env.example`):
 | `ORACLE_HOST` | `localhost` | |
 | `ORACLE_PORT` | `1521` | |
 | `ORACLE_SERVICE` | `FREEPDB1` | |
-| `ORACLE_PWD` | `FreeP4ssw0rd!` | |
+| `ORACLE_PWD` | *(required)* | |
 | `EMBEDDING_PROVIDER` | `mock` | `mock` or `ollama` |
 | `OLLAMA_HOST` | `http://localhost:11434` | Only needed when provider is `ollama` |
 | `OLLAMA_MODEL` | `nomic-embed-text` | Only needed when provider is `ollama` |

@@ -40,17 +40,24 @@ app = FastAPI(
 )
 
 
+# --- Ingest bounds ---
+# One request must not drive unbounded embedding work or row growth: the accepted
+# body is capped and the resulting chunk count is rejected before any embedding.
+MAX_CONTENT_CHARS = 1_000_000
+MAX_INGEST_CHUNKS = 1_000
+
+
 # --- Request/Response models ---
 
 
 class DocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=MAX_CONTENT_CHARS)
 
 
 class DocumentIngest(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=MAX_CONTENT_CHARS)
     chunk_size: int = Field(default=512, ge=100, le=4000)
     chunk_overlap: int = Field(default=64, ge=0, le=500)
 
@@ -95,6 +102,14 @@ def create_document(doc: DocumentCreate):
 def ingest_document(doc: DocumentIngest):
     """Ingest a large document: auto-chunks it and embeds each chunk separately."""
     chunks = chunk_text(doc.content, chunk_size=doc.chunk_size, chunk_overlap=doc.chunk_overlap)
+    if len(chunks) > MAX_INGEST_CHUNKS:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"document produces {len(chunks)} chunks, exceeding the limit of "
+                f"{MAX_INGEST_CHUNKS}; increase chunk_size or split the document"
+            ),
+        )
 
     # Insert a parent document holding a short preview (embedded like any document)
     preview = doc.content[:200] + "..." if len(doc.content) > 200 else doc.content

@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS semantic_cache (
     query_embedding VECTOR,
     response_text   CLOB NOT NULL,
     model_name      VARCHAR2(200),
+    scope_key       VARCHAR2(64) DEFAULT '' NOT NULL,
     hit_count       NUMBER DEFAULT 0,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

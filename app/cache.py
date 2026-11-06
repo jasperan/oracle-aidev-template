@@ -9,6 +9,7 @@ This is something standalone vector DBs can't do natively: SQL + vector
 similarity in one atomic transaction, with ACID guarantees on the cache.
 """
 
+import hashlib
 import os
 from typing import Any
 
@@ -17,9 +18,23 @@ from app.vector_search import embed
 
 CACHE_THRESHOLD = float(os.getenv("CACHE_SIMILARITY_THRESHOLD", "0.15"))
 
+# Bump when the key composition changes so old entries stop matching.
+CACHE_SCOPE_VERSION = 1
 
-def lookup(query: str) -> dict[str, Any] | None:
-    """Check if a semantically similar query exists in the cache.
+
+def scope_key(system_prompt: str, model_name: str) -> str:
+    """Namespace for cache entries.
+
+    An answer is only reusable for a request that would have asked the same
+    question under the same policy and model, so both are part of the key in
+    addition to the question embedding.
+    """
+    material = f"v{CACHE_SCOPE_VERSION}\x00{model_name}\x00{system_prompt}"
+    return hashlib.sha256(material.encode()).hexdigest()[:32]
+
+
+def lookup(query: str, scope: str = "") -> dict[str, Any] | None:
+    """Check if a semantically similar query exists in the cache for this scope.
 
     Returns the cached response if cosine distance < threshold, else None.
     """
@@ -31,11 +46,12 @@ def lookup(query: str) -> dict[str, Any] | None:
                 SELECT id, query_text, response_text, model_name,
                        VECTOR_DISTANCE(query_embedding, :qvec, COSINE) AS distance
                 FROM semantic_cache
-                WHERE VECTOR_DISTANCE(query_embedding, :qvec, COSINE) < :threshold
+                WHERE scope_key = :scope
+                  AND VECTOR_DISTANCE(query_embedding, :qvec, COSINE) < :threshold
                 ORDER BY VECTOR_DISTANCE(query_embedding, :qvec, COSINE)
                 FETCH FIRST 1 ROWS ONLY
                 """,
-                {"qvec": query_vec, "threshold": CACHE_THRESHOLD},
+                {"qvec": query_vec, "threshold": CACHE_THRESHOLD, "scope": scope},
             )
             row = cur.fetchone()
             if row is None:
@@ -57,7 +73,7 @@ def lookup(query: str) -> dict[str, Any] | None:
             }
 
 
-def store(query: str, response: str, model_name: str = "unknown") -> int:
+def store(query: str, response: str, model_name: str = "unknown", scope: str = "") -> int:
     """Store a query-response pair in the semantic cache. Returns the cache entry ID."""
     query_vec = embed(query)
     with get_connection() as conn:
@@ -66,8 +82,8 @@ def store(query: str, response: str, model_name: str = "unknown") -> int:
             cur.execute(
                 """
                 INSERT INTO semantic_cache
-                    (query_text, query_embedding, response_text, model_name)
-                VALUES (:query, :qvec, :response, :model)
+                    (query_text, query_embedding, response_text, model_name, scope_key)
+                VALUES (:query, :qvec, :response, :model, :scope)
                 RETURNING id INTO :new_id
                 """,
                 {
@@ -75,6 +91,7 @@ def store(query: str, response: str, model_name: str = "unknown") -> int:
                     "qvec": query_vec,
                     "response": response,
                     "model": model_name,
+                    "scope": scope,
                     "new_id": id_var,
                 },
             )

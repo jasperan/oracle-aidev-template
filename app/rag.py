@@ -120,10 +120,14 @@ def query(
     k = top_k
     prompt = system_prompt
     should_cache = use_cache
+    model_name = OLLAMA_CHAT_MODEL if RAG_PROVIDER == "ollama" else "mock"
+    # Answers are only reused within the same policy and model, so cache entries
+    # never cross a prompt that would have produced a different answer.
+    cache_scope = cache.scope_key(prompt, model_name)
 
     # Step 1: Check semantic cache
     if should_cache:
-        cached = cache.lookup(question)
+        cached = cache.lookup(question, scope=cache_scope)
         if cached is not None:
             return RAGResponse(
                 answer=cached["response_text"],
@@ -140,19 +144,17 @@ def query(
 
     if RAG_PROVIDER == "ollama":
         answer = _generate_ollama(context, question, prompt)
-        model = OLLAMA_CHAT_MODEL
     else:
         answer = _generate_mock(context, question)
-        model = "mock"
 
     # Step 4: Store in semantic cache
     if should_cache:
-        cache.store(question, answer, model_name=model)
+        cache.store(question, answer, model_name=model_name, scope=cache_scope)
 
     # Step 5: Return response
     return RAGResponse(
         answer=answer,
         sources=sources,
         cached=False,
-        model=model,
+        model=model_name,
     )
